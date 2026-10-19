@@ -116,29 +116,19 @@ export function SettingsView() {
       <Card className="h-fit">
         <PanelHeading
           title="Storage & privacy"
-          description="Where your data lives, and what leaves the browser."
+          description="Your workspace stays in this browser tab session."
         />
         <div className="space-y-3 px-4 py-3 text-xs text-slate-600 dark:text-slate-300">
           <p>
-            <strong>Guest mode (default):</strong> workspaces, preferences and history are kept in
-            this browser&apos;s <code className="mono">localStorage</code>. Nothing is sent to the
-            server until you press <em>Save to cloud</em>.
+            <strong>Session storage:</strong> workspaces, preferences, and history stay in this
+            browser tab. They are available after a page refresh and are cleared when the tab
+            session ends.
           </p>
           <p>
-            <strong>Cloud storage:</strong> workspaces saved to the cloud are stored in PostgreSQL
-            and associated with an anonymous guest key generated in your browser. No account or
-            personal data is required.
+            <strong>Calculations:</strong> expressions are evaluated in your browser. FuncLab does
+            not send your workspace or history to a database.
           </p>
-          <p>
-            <strong>Evaluation:</strong> all mathematics runs locally in your browser with a
-            restricted mathjs engine — never with <code className="mono">eval()</code>. The{" "}
-            <code className="mono">/api/evaluate</code> endpoint offers the same validated engine
-            server-side.
-          </p>
-          <Alert tone="info">
-            Clearing your browser storage removes local workspaces. Export important work as JSON or
-            save it to the cloud.
-          </Alert>
+          <Alert tone="info">Export a workspace as JSON if you want to keep a copy after closing this tab.</Alert>
         </div>
       </Card>
 

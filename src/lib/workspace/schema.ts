@@ -105,34 +105,10 @@ export const workspaceExportSchema = z.object({
   data: workspaceDataSchema,
 });
 
-export const workspaceCreateSchema = z.object({
-  name: z.string().min(1).max(120),
-  description: z.string().max(400).optional().default(""),
-  data: workspaceDataSchema,
-});
-
-export const workspaceUpdateSchema = z.object({
-  name: z.string().min(1).max(120).optional(),
-  description: z.string().max(400).optional(),
-  data: workspaceDataSchema.optional(),
-});
-
-export const calculationCreateSchema = z.object({
-  kind: z.string().min(1).max(40),
-  expression: z.string().min(1).max(512),
-  result: z.string().max(400),
-});
-
-export const evaluateRequestSchema = z.object({
-  expression: z.string().min(1).max(512),
-  values: z.record(z.string().max(64), z.number().finite()).default({}),
-  angleMode: z.enum(["rad", "deg"]).default("rad"),
-});
-
 export type WorkspaceExport = z.infer<typeof workspaceExportSchema>;
 
 /**
- * Tolerant parse used when loading data from localStorage or an imported file.
+ * Tolerant parse used when loading data from the current browser session or an imported file.
  * Missing/invalid sections fall back to defaults instead of destroying the file.
  */
 export function coerceWorkspaceData(input: unknown): WorkspaceData {
@@ -156,9 +132,3 @@ export function coerceWorkspaceData(input: unknown): WorkspaceData {
   };
 }
 
-export function describeZodError(error: z.ZodError): string {
-  return error.issues
-    .slice(0, 4)
-    .map((issue) => `${issue.path.join(".") || "root"}: ${issue.message}`)
-    .join("; ");
-}

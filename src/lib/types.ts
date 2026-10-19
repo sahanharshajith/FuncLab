@@ -119,7 +119,7 @@ export interface WorkspaceData {
   settings: WorkspaceSettings;
 }
 
-export type WorkspaceStorageKind = "local" | "cloud";
+export type WorkspaceStorageKind = "local";
 
 export interface Workspace {
   id: string;
@@ -138,7 +138,6 @@ export interface WorkspaceSummary {
   storage: WorkspaceStorageKind;
   functionCount: number;
   updatedAt: string;
-  isTemplate?: boolean;
 }
 
 /** Parsed signature, e.g. `g(x, y)` -> { name: "g", params: ["x", "y"] } */

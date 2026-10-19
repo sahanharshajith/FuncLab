@@ -2,16 +2,14 @@
 
 import { useRef, useState } from "react";
 import { useWorkspaceStore } from "@/lib/workspace/store";
-import { Cloud, FolderKanban, HardDrive } from "lucide-react";
+import { FolderKanban, HardDrive } from "lucide-react";
 import {
-  Alert,
   Badge,
   Button,
   Card,
   EmptyState,
   Field,
   PanelHeading,
-  Spinner,
   TextInput,
 } from "@/components/ui/primitives";
 
@@ -25,16 +23,10 @@ export function WorkspacesView() {
     workspace,
     dispatch,
     localWorkspaces,
-    cloudWorkspaces,
-    cloudStatus,
-    cloudError,
-    refreshCloud,
     openWorkspace,
     newWorkspace,
     duplicateCurrent,
     deleteWorkspace,
-    saveToCloud,
-    saveStatus,
     exportWorkspace,
     importWorkspace,
   } = useWorkspaceStore();
@@ -46,23 +38,15 @@ export function WorkspacesView() {
       <Card className="xl:col-span-2">
         <PanelHeading
           title="Current workspace"
-          description={
-            workspace.storage === "cloud"
-              ? "Stored in the PostgreSQL database and auto-saved while you work."
-              : "Stored in this browser (guest mode). Save to the cloud to access it from the database."
-          }
+          description="This workspace is kept for the current browser tab session."
           actions={
             <>
-              <Badge tone={workspace.storage === "cloud" ? "success" : "neutral"}>
+              <Badge tone="neutral">
                 <span className="inline-flex items-center gap-1">
-                  {workspace.storage === "cloud" ? <Cloud size={14} /> : <HardDrive size={14} />}
-                  {workspace.storage}
+                  <HardDrive size={14} />
+                  Session only
                 </span>
               </Badge>
-              {saveStatus === "saving" ? <Spinner /> : null}
-              <Button size="sm" variant="primary" onClick={() => void saveToCloud()}>
-                {workspace.storage === "cloud" ? "Save now" : "Save to cloud"}
-              </Button>
               <Button size="sm" onClick={duplicateCurrent}>
                 Duplicate
               </Button>
@@ -96,20 +80,17 @@ export function WorkspacesView() {
           <span>{workspace.data.functions.length} functions</span>
           <span>{workspace.data.variables.length} variables</span>
           <span>updated {formatDate(workspace.updatedAt)}</span>
-          {saveStatus === "error" ? (
-            <span className="text-red-600 dark:text-red-400">cloud save failed</span>
-          ) : null}
         </div>
       </Card>
 
       <Card>
         <PanelHeading
-          title="Local workspaces"
-          description="Saved in this browser only — perfect for guest mode."
+          title="Session workspaces"
+          description="Saved in this browser tab and cleared when its session ends."
         />
         <div className="divide-y divide-slate-100 dark:divide-slate-800">
           {localWorkspaces.length === 0 ? (
-            <p className="px-4 py-6 text-center text-xs text-slate-500">No local workspaces yet.</p>
+            <p className="px-4 py-6 text-center text-xs text-slate-500">No session workspaces yet.</p>
           ) : null}
           {localWorkspaces.map((item) => (
             <div key={item.id} className="flex items-center gap-3 px-4 py-2.5">
@@ -126,13 +107,13 @@ export function WorkspacesView() {
                   {item.functionCount} functions · {formatDate(item.updatedAt)}
                 </p>
               </div>
-              <Button size="sm" onClick={() => void openWorkspace(item.id, "local")}>
+              <Button size="sm" onClick={() => openWorkspace(item.id)}>
                 Open
               </Button>
               <Button
                 size="sm"
                 variant="danger"
-                onClick={() => void deleteWorkspace(item.id, "local")}
+                onClick={() => deleteWorkspace(item.id)}
               >
                 Delete
               </Button>
@@ -141,54 +122,6 @@ export function WorkspacesView() {
         </div>
       </Card>
 
-      <Card>
-        <PanelHeading
-          title="Cloud workspaces"
-          description="Stored in PostgreSQL and shared across devices using your anonymous guest key."
-          actions={
-            <Button size="sm" onClick={() => void refreshCloud()}>
-              {cloudStatus === "loading" ? <Spinner /> : "Refresh"}
-            </Button>
-          }
-        />
-        {cloudStatus === "error" ? (
-          <div className="px-4 py-3">
-            <Alert tone="error">{cloudError ?? "The cloud database is unavailable."}</Alert>
-          </div>
-        ) : null}
-        <div className="divide-y divide-slate-100 dark:divide-slate-800">
-          {cloudStatus === "idle" && cloudWorkspaces.length === 0 ? (
-            <p className="px-4 py-6 text-center text-xs text-slate-500">
-              Nothing saved to the cloud yet.
-            </p>
-          ) : null}
-          {cloudWorkspaces.map((item) => (
-            <div key={item.id} className="flex items-center gap-3 px-4 py-2.5">
-              <div className="min-w-0 flex-1">
-                <p className="flex items-center gap-2 truncate text-sm font-medium text-slate-800 dark:text-slate-100">
-                  {item.name}
-                  {item.isTemplate ? <Badge tone="warning">template</Badge> : null}
-                </p>
-                <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">
-                  {item.description || `${item.functionCount} functions`} · {formatDate(item.updatedAt)}
-                </p>
-              </div>
-              <Button size="sm" onClick={() => void openWorkspace(item.id, "cloud")}>
-                Open
-              </Button>
-              {!item.isTemplate ? (
-                <Button
-                  size="sm"
-                  variant="danger"
-                  onClick={() => void deleteWorkspace(item.id, "cloud")}
-                >
-                  Delete
-                </Button>
-              ) : null}
-            </div>
-          ))}
-        </div>
-      </Card>
 
       <Card className="xl:col-span-2">
         <PanelHeading
@@ -233,7 +166,7 @@ export function WorkspacesView() {
         </div>
       </Card>
 
-      {localWorkspaces.length === 0 && cloudWorkspaces.length === 0 ? (
+      {localWorkspaces.length === 0 ? (
         <div className="xl:col-span-2">
           <EmptyState
             icon={<FolderKanban size={22} aria-hidden="true" />}

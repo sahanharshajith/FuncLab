@@ -5,12 +5,13 @@ import HomePage from "@/app/page";
 
 afterEach(() => {
   cleanup();
+  window.sessionStorage.clear();
   window.localStorage.clear();
 });
 
 async function renderApp() {
   render(<HomePage />);
-  // The provider hydrates from localStorage in an effect.
+  // The provider hydrates from sessionStorage in an effect.
   await waitFor(() => expect(screen.getByText("FuncLab")).toBeDefined());
 }
 

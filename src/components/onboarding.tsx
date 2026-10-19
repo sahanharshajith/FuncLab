@@ -44,7 +44,7 @@ const STEPS: Step[] = [
   },
   {
     title: "5 · Tables, tools and saving",
-    body: "Generate value tables with CSV export, use the numerical analysis tools, then save the workspace to the cloud database or export it as JSON.",
+    body: "Generate value tables with CSV export and use the numerical analysis tools. Export a workspace as JSON if you want to keep it after this tab session.",
     example: "f(x) = x^2 from -5 to 5 step 1",
     view: "table",
   },

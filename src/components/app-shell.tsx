@@ -35,7 +35,7 @@ const NAV: { id: ViewId; label: string; icon: LucideIcon; hint: string }[] = [
   { id: "table", label: "Tables", icon: Table2, hint: "Value tables and CSV export" },
   { id: "calculator", label: "Calculator", icon: Calculator, hint: "Scientific calculator" },
   { id: "tools", label: "Analysis", icon: Sigma, hint: "Derivatives, integrals, roots" },
-  { id: "workspaces", label: "Workspaces", icon: FolderKanban, hint: "Saved local and cloud workspaces" },
+  { id: "workspaces", label: "Workspaces", icon: FolderKanban, hint: "Saved for this tab session" },
   { id: "history", label: "History", icon: History, hint: "Recent calculations" },
   { id: "settings", label: "Settings", icon: Settings, hint: "Preferences and function reference" },
 ];
@@ -52,7 +52,7 @@ const TITLES: Record<ViewId, { title: string; description: string }> = {
   table: { title: "Value tables", description: "Tabulate functions over a range and export CSV." },
   calculator: { title: "Scientific calculator", description: "Quick calculations in the workspace scope." },
   tools: { title: "Numerical analysis", description: "Derivatives, integrals, roots, extrema, limits, statistics." },
-  workspaces: { title: "Workspaces", description: "Local guest storage and cloud persistence." },
+  workspaces: { title: "Workspaces", description: "Workspaces saved for this browser tab session." },
   history: { title: "History", description: "Your recent calculations." },
   settings: { title: "Settings", description: "Angle mode, precision, theme and the function reference." },
 };
@@ -90,10 +90,8 @@ export function AppShell() {
     setStatus,
     setOnboardingOpen,
     localWorkspaces,
-    cloudWorkspaces,
     openWorkspace,
     newWorkspace,
-    saveStatus,
     calculating,
   } = useWorkspaceStore();
   const { view, setView, sidebarOpen, setSidebarOpen } = useUi();
@@ -139,46 +137,30 @@ export function AppShell() {
               id="workspace-selector"
               value={`${workspace.storage}:${workspace.id}`}
               onChange={(event) => {
-                const [storage, id] = event.target.value.split(":");
+                const [, id] = event.target.value.split(":");
                 if (id === "__new__") {
                   newWorkspace();
                   return;
                 }
-                void openWorkspace(id, storage as "local" | "cloud");
+                openWorkspace(id);
               }}
               className="h-8 max-w-[220px] rounded-lg border border-slate-300 bg-white px-2 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
             >
-              {!localWorkspaces.some((item) => item.id === workspace.id) &&
-              !cloudWorkspaces.some((item) => item.id === workspace.id) ? (
+              {!localWorkspaces.some((item) => item.id === workspace.id) ? (
                 <option value={`${workspace.storage}:${workspace.id}`}>
                   {workspace.name}
                 </option>
               ) : null}
-              <optgroup label="This browser">
+              <optgroup label="This tab session">
                 {localWorkspaces.map((item) => (
                   <option key={item.id} value={`local:${item.id}`}>
                     {item.name}
                   </option>
                 ))}
               </optgroup>
-              {cloudWorkspaces.length ? (
-                <optgroup label="Cloud">
-                  {cloudWorkspaces.map((item) => (
-                    <option key={item.id} value={`cloud:${item.id}`}>
-                      {item.isTemplate ? "[Template] " : ""}{item.name}
-                    </option>
-                  ))}
-                </optgroup>
-              ) : null}
               <option value="local:__new__">+ New workspace</option>
             </select>
-            <Badge tone={workspace.storage === "cloud" ? "success" : "neutral"}>
-              {workspace.storage === "cloud"
-                ? saveStatus === "saving"
-                  ? "saving…"
-                  : "cloud"
-                : "local"}
-            </Badge>
+            <Badge tone="neutral">session only</Badge>
           </div>
 
           <div className="ml-auto flex items-center gap-1.5">
@@ -254,8 +236,8 @@ export function AppShell() {
           <div className="mt-auto rounded-lg bg-slate-50 p-3 text-[11px] text-justify hyphens-auto text-slate-500 dark:bg-slate-800/50 dark:text-slate-400">
             <p className="font-medium text-slate-600 dark:text-slate-300">Guest mode</p>
             <p className="mt-1">
-              No account needed. Work is saved in this browser; use Workspaces → Save to cloud for
-              database storage.
+              No account needed. Workspaces and history stay in this tab session and are cleared
+              when you close it.
             </p>
           </div>
         </nav>

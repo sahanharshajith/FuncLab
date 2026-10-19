@@ -4,9 +4,8 @@ FuncLab is an interactive workspace for exploring mathematical functions. It bri
 editing, graphing, value tables, calculations, and numerical analysis together in one place, so you
 can move from writing an expression to understanding how it behaves.
 
-You can open the app and start working without creating an account. Your work is saved in the
-current browser by default. Optional cloud workspaces let you keep selected work in a connected
-database.
+You can open the app and start working without creating an account. Your work stays in the current
+browser tab session and is cleared when that session ends.
 
 ## What you can do
 
@@ -67,7 +66,7 @@ Calculation history collects recent calculator and analysis results. You can cle
 2. Open **Graph** to see the curve. Change the variable value or graph range to explore it.
 3. Open **Tables** to calculate values of f over a range.
 4. Open **Calculator** to evaluate an expression using the current workspace.
-5. Save the workspace if you want to return to it later.
+5. Export the workspace as JSON if you want to keep a copy after closing the tab.
 
 ## Main areas
 
@@ -84,13 +83,12 @@ Calculation history collects recent calculator and analysis results. You can cle
 
 ## Saving and privacy
 
-In guest mode, workspaces, preferences, and history are stored in your browser. Clearing browser
-storage can remove that data, so export important workspaces if you want a separate backup.
+FuncLab does not require an account and does not save workspace data to a database. Workspaces,
+preferences, and calculation history are held in the current browser tab session. They remain
+available when you refresh the page, but are normally cleared when you close the tab. Export a
+workspace as JSON to keep a copy.
 
-Cloud workspace saving is optional. It requires the app to be connected to a database. Cloud data is
-associated with an anonymous key kept in the browser; there are no user accounts. Anyone who gets
-that key may be able to access its associated data. Do not use cloud workspaces for sensitive
-information.
+Calculations are performed in the browser. Your functions and history are not sent to a database.
 
 ## Who FuncLab is for
 

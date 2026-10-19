@@ -2,7 +2,7 @@
 
 /*
  * This store deliberately synchronises React state with external systems
- * (localStorage, the cloud API and the document theme) inside effects, which
+ * (sessionStorage and the document theme) inside effects, which
  * is exactly what the React docs recommend for "subscribe to / hydrate from an
  * external store" flows. The new react-hooks lint rule is relaxed for the file.
  */
@@ -16,7 +16,6 @@ import {
   useEffect,
   useMemo,
   useReducer,
-  useRef,
   useState,
   type Dispatch,
   type ReactNode,
@@ -38,25 +37,17 @@ import { createWorkspace, demoWorkspace, emptyWorkspaceData } from "./defaults";
 import { workspaceReducer, type WorkspaceAction } from "./reducer";
 import {
   appendLocalHistory,
-  clearCloudHistory,
   clearLocalHistory,
-  createCloudWorkspace,
-  deleteCloudWorkspace,
   deleteLocalWorkspace,
-  fetchCloudHistory,
-  fetchCloudWorkspaces,
   getActiveWorkspaceId,
   getStoredTheme,
   hasSeenOnboarding,
   listLocalHistory,
   listLocalWorkspaces,
   markOnboardingSeen,
-  saveCloudCalculation,
   saveLocalWorkspace,
   setActiveWorkspaceId,
   storeTheme,
-  updateCloudWorkspace,
-  type CloudWorkspaceDto,
 } from "./persistence";
 import { coerceWorkspaceData, workspaceExportSchema } from "./schema";
 
@@ -78,16 +69,10 @@ export interface WorkspaceStoreValue {
   theme: ThemeMode;
   setTheme: (theme: ThemeMode) => void;
   localWorkspaces: WorkspaceSummary[];
-  cloudWorkspaces: (WorkspaceSummary & { isTemplate: boolean })[];
-  cloudStatus: "idle" | "loading" | "error";
-  cloudError: string | null;
-  refreshCloud: () => Promise<void>;
-  openWorkspace: (id: string, storage: "local" | "cloud") => Promise<void>;
+  openWorkspace: (id: string) => void;
   newWorkspace: (name?: string) => void;
   duplicateCurrent: () => void;
-  deleteWorkspace: (id: string, storage: "local" | "cloud") => Promise<void>;
-  saveToCloud: () => Promise<void>;
-  saveStatus: "idle" | "saving" | "saved" | "error";
+  deleteWorkspace: (id: string) => void;
   exportWorkspace: () => void;
   importWorkspace: (json: string) => Promise<void>;
   history: CalculationRecord[];
@@ -112,18 +97,6 @@ function summarise(workspace: Workspace): WorkspaceSummary {
   };
 }
 
-function cloudToWorkspace(dto: CloudWorkspaceDto): Workspace {
-  return {
-    id: dto.id,
-    name: dto.name,
-    description: dto.description,
-    storage: "cloud",
-    data: coerceWorkspaceData(dto.data),
-    createdAt: dto.createdAt,
-    updatedAt: dto.updatedAt,
-  };
-}
-
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [workspace, dispatch] = useReducer(
     workspaceReducer,
@@ -133,16 +106,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
   const [theme, setThemeState] = useState<ThemeMode>("light");
   const [localWorkspaces, setLocalWorkspaces] = useState<WorkspaceSummary[]>([]);
-  const [cloudWorkspaces, setCloudWorkspaces] = useState<
-    (WorkspaceSummary & { isTemplate: boolean })[]
-  >([]);
-  const [cloudStatus, setCloudStatus] = useState<"idle" | "loading" | "error">("idle");
-  const [cloudError, setCloudError] = useState<string | null>(null);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [history, setHistory] = useState<CalculationRecord[]>([]);
   const [status, setStatus] = useState<StatusMessage | null>(null);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
-  const cloudCache = useRef<Map<string, Workspace>>(new Map());
 
   // ---------------------------------------------------------------- hydrate
   useEffect(() => {
@@ -180,7 +146,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     storeTheme(next);
   }, []);
 
-  // ------------------------------------------------------- local autosaving
+  // ----------------------------------------------------- session autosaving
   useEffect(() => {
     if (!hydrated) return;
     const timeout = window.setTimeout(() => {
@@ -188,25 +154,6 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       setActiveWorkspaceId(workspace.id);
       setLocalWorkspaces(listLocalWorkspaces().map(summarise));
     }, 400);
-    return () => window.clearTimeout(timeout);
-  }, [workspace, hydrated]);
-
-  // ------------------------------------------------------- cloud autosaving
-  useEffect(() => {
-    if (!hydrated || workspace.storage !== "cloud") return;
-    setSaveStatus("saving");
-    const timeout = window.setTimeout(async () => {
-      try {
-        await updateCloudWorkspace(workspace.id, {
-          name: workspace.name,
-          description: workspace.description,
-          data: workspace.data,
-        });
-        setSaveStatus("saved");
-      } catch {
-        setSaveStatus("error");
-      }
-    }, 1200);
     return () => window.clearTimeout(timeout);
   }, [workspace, hydrated]);
 
@@ -227,64 +174,16 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const values = useMemo(() => variableValueMap(deferredData.variables), [deferredData.variables]);
   const calculating = deferredData !== workspace.data;
 
-  // ------------------------------------------------------------------ cloud
-  const refreshCloud = useCallback(async () => {
-    setCloudStatus("loading");
-    setCloudError(null);
-    try {
-      const rows = await fetchCloudWorkspaces();
-      cloudCache.current = new Map(rows.map((row) => [row.id, cloudToWorkspace(row)]));
-      setCloudWorkspaces(
-        rows.map((row) => ({
-          id: row.id,
-          name: row.name,
-          description: row.description,
-          storage: "cloud" as const,
-          functionCount: row.data?.functions?.length ?? 0,
-          updatedAt: row.updatedAt,
-          isTemplate: row.isTemplate,
-        })),
-      );
-      setCloudStatus("idle");
-    } catch (error) {
-      setCloudStatus("error");
-      setCloudError(error instanceof Error ? error.message : "Cloud unavailable");
+  const openWorkspace = useCallback((id: string) => {
+    const found = listLocalWorkspaces().find((item) => item.id === id);
+    if (!found) {
+      setStatus({ kind: "error", message: "Workspace not found in this browser session." });
+      return;
     }
+    dispatch({ type: "replace", workspace: found });
+    setActiveWorkspaceId(found.id);
+    setStatus({ kind: "success", message: `Opened "${found.name}".` });
   }, []);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    void refreshCloud();
-    void fetchCloudHistory()
-      .then((cloud) => {
-        setHistory((current) => mergeHistory(current, cloud));
-      })
-      .catch(() => undefined);
-  }, [hydrated, refreshCloud]);
-
-  const openWorkspace = useCallback(
-    async (id: string, storage: "local" | "cloud") => {
-      if (storage === "local") {
-        const found = listLocalWorkspaces().find((item) => item.id === id);
-        if (!found) {
-          setStatus({ kind: "error", message: "Workspace not found in this browser." });
-          return;
-        }
-        dispatch({ type: "replace", workspace: found });
-        setActiveWorkspaceId(found.id);
-        setStatus({ kind: "success", message: `Opened "${found.name}" (local)` });
-        return;
-      }
-      const cached = cloudCache.current.get(id);
-      if (cached) {
-        dispatch({ type: "replace", workspace: cached });
-        setStatus({ kind: "success", message: `Opened "${cached.name}" (cloud)` });
-        return;
-      }
-      setStatus({ kind: "error", message: "Cloud workspace is not available." });
-    },
-    [],
-  );
 
   const newWorkspace = useCallback((name = "Untitled workspace") => {
     const created = createWorkspace(name, emptyWorkspaceData());
@@ -292,7 +191,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     setActiveWorkspaceId(created.id);
     setLocalWorkspaces(listLocalWorkspaces().map(summarise));
     dispatch({ type: "replace", workspace: created });
-    setStatus({ kind: "success", message: "Created a new local workspace." });
+    setStatus({ kind: "success", message: "Created a workspace for this tab session." });
   }, []);
 
   const duplicateCurrent = useCallback(() => {
@@ -306,64 +205,23 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     setActiveWorkspaceId(copy.id);
     setLocalWorkspaces(listLocalWorkspaces().map(summarise));
     dispatch({ type: "replace", workspace: copy });
-    setStatus({ kind: "success", message: "Workspace duplicated locally." });
+    setStatus({ kind: "success", message: "Workspace duplicated in this session." });
   }, [workspace]);
 
   const deleteWorkspace = useCallback(
-    async (id: string, storage: "local" | "cloud") => {
-      if (storage === "local") {
-        deleteLocalWorkspace(id);
-        setLocalWorkspaces(listLocalWorkspaces().map(summarise));
-        setStatus({ kind: "success", message: "Local workspace deleted." });
-        if (id === workspace.id) {
-          const remaining = listLocalWorkspaces()[0] ?? demoWorkspace();
-          saveLocalWorkspace(remaining);
-          dispatch({ type: "replace", workspace: remaining });
-        }
-        return;
-      }
-      try {
-        await deleteCloudWorkspace(id);
-        await refreshCloud();
-        setStatus({ kind: "success", message: "Cloud workspace deleted." });
-      } catch (error) {
-        setStatus({
-          kind: "error",
-          message: error instanceof Error ? error.message : "Delete failed.",
-        });
+    (id: string) => {
+      deleteLocalWorkspace(id);
+      setLocalWorkspaces(listLocalWorkspaces().map(summarise));
+      setStatus({ kind: "success", message: "Workspace deleted from this session." });
+      if (id === workspace.id) {
+        const remaining = listLocalWorkspaces()[0] ?? demoWorkspace();
+        saveLocalWorkspace(remaining);
+        setActiveWorkspaceId(remaining.id);
+        dispatch({ type: "replace", workspace: remaining });
       }
     },
-    [refreshCloud, workspace.id],
+    [workspace.id],
   );
-
-  const saveToCloud = useCallback(async () => {
-    setSaveStatus("saving");
-    try {
-      if (workspace.storage === "cloud") {
-        await updateCloudWorkspace(workspace.id, {
-          name: workspace.name,
-          description: workspace.description,
-          data: workspace.data,
-        });
-      } else {
-        const created = await createCloudWorkspace(
-          workspace.name,
-          workspace.description,
-          workspace.data,
-        );
-        dispatch({ type: "replace", workspace: cloudToWorkspace(created) });
-      }
-      setSaveStatus("saved");
-      setStatus({ kind: "success", message: "Workspace saved to the cloud database." });
-      await refreshCloud();
-    } catch (error) {
-      setSaveStatus("error");
-      setStatus({
-        kind: "error",
-        message: error instanceof Error ? error.message : "Cloud save failed.",
-      });
-    }
-  }, [refreshCloud, workspace]);
 
   const exportWorkspace = useCallback(() => {
     const payload = {
@@ -422,19 +280,13 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         createdAt: new Date().toISOString(),
         storage: "local",
       };
-      setHistory((current) => [record, ...current].slice(0, 100));
-      try {
-        const saved = await saveCloudCalculation(entry);
-        setHistory((current) => [saved, ...current.filter((item) => item.id !== record.id)].slice(0, 100));
-      } catch {
-        const local = appendLocalHistory({
-          kind: entry.kind,
-          expression: entry.expression,
-          result: entry.result,
-          createdAt: record.createdAt,
-        });
-        setHistory((current) => [local, ...current.filter((item) => item.id !== record.id)].slice(0, 100));
-      }
+      const local = appendLocalHistory({
+        kind: entry.kind,
+        expression: entry.expression,
+        result: entry.result,
+        createdAt: record.createdAt,
+      });
+      setHistory((current) => [local, ...current].slice(0, 100));
     },
     [],
   );
@@ -442,11 +294,6 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const clearHistory = useCallback(async () => {
     clearLocalHistory();
     setHistory([]);
-    try {
-      await clearCloudHistory();
-    } catch {
-      // local history is already cleared
-    }
   }, []);
 
   const handleOnboarding = useCallback((open: boolean) => {
@@ -466,16 +313,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       theme,
       setTheme,
       localWorkspaces,
-      cloudWorkspaces,
-      cloudStatus,
-      cloudError,
-      refreshCloud,
       openWorkspace,
       newWorkspace,
       duplicateCurrent,
       deleteWorkspace,
-      saveToCloud,
-      saveStatus,
       exportWorkspace,
       importWorkspace,
       history,
@@ -496,16 +337,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       theme,
       setTheme,
       localWorkspaces,
-      cloudWorkspaces,
-      cloudStatus,
-      cloudError,
-      refreshCloud,
       openWorkspace,
       newWorkspace,
       duplicateCurrent,
       deleteWorkspace,
-      saveToCloud,
-      saveStatus,
       exportWorkspace,
       importWorkspace,
       history,
@@ -529,20 +364,6 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   }
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
-}
-
-function mergeHistory(local: CalculationRecord[], cloud: CalculationRecord[]): CalculationRecord[] {
-  const all = [...cloud, ...local];
-  const seen = new Set<string>();
-  return all
-    .filter((item) => {
-      const key = `${item.kind}|${item.expression}|${item.result}|${item.createdAt}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    })
-    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
-    .slice(0, 100);
 }
 
 export function useWorkspaceStore(): WorkspaceStoreValue {

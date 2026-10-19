@@ -192,7 +192,7 @@ export function CalculatorView() {
       <Card className="h-fit">
         <PanelHeading
           title="Recent calculations"
-          description="Saved to the cloud database when available, otherwise to this browser."
+          description="Calculation history is kept for this browser tab session."
         />
         <div className="divide-y divide-slate-100 text-xs dark:divide-slate-800">
           {recent.length === 0 ? (

@@ -2,7 +2,7 @@
 
 import { useWorkspaceStore } from "@/lib/workspace/store";
 import { Badge, Button, Card, EmptyState, PanelHeading } from "@/components/ui/primitives";
-import { Cloud, HardDrive, History } from "lucide-react";
+import { History } from "lucide-react";
 
 export function HistoryView() {
   const { history, clearHistory } = useWorkspaceStore();
@@ -11,7 +11,7 @@ export function HistoryView() {
     <Card>
       <PanelHeading
         title="Calculation history"
-        description="Recent calculator and analysis results. Cloud entries sync through PostgreSQL; local entries stay in this browser."
+        description="Recent calculator and analysis results from this browser tab session."
         actions={
           <Button size="sm" variant="danger" onClick={() => void clearHistory()} disabled={!history.length}>
             Clear history
@@ -30,12 +30,7 @@ export function HistoryView() {
         <ul className="divide-y divide-slate-100 dark:divide-slate-800">
           {history.map((item) => (
             <li key={item.id} className="flex flex-wrap items-center gap-2 px-4 py-2.5 text-xs">
-              <Badge tone={item.storage === "cloud" ? "success" : "neutral"}>
-                <span className="inline-flex items-center gap-1">
-                  {item.storage === "cloud" ? <Cloud size={13} /> : <HardDrive size={13} />}
-                  {item.kind}
-                </span>
-              </Badge>
+              <Badge tone="neutral">{item.kind}</Badge>
               <span className="mono min-w-0 flex-1 truncate text-slate-600 dark:text-slate-300">
                 {item.expression}
               </span>
