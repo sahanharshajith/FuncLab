@@ -98,7 +98,3 @@ FuncLab is useful for students learning how equations behave, teachers preparing
 anyone who wants a quick way to calculate, graph, compare, or inspect mathematical expressions.
 It can support exploration and learning, but numerical analysis results are estimates and should be
 checked when precision matters.
-
-## License
-
-No license has been added to this repository yet.
