@@ -14,6 +14,7 @@ import {
 } from "@/lib/math/sampling";
 import { formatNumber } from "@/lib/math/format";
 import type { GraphMode } from "@/lib/types";
+import { Eye, EyeOff, Plus, Trash2 } from "lucide-react";
 import {
   Alert,
   Badge,
@@ -407,6 +408,122 @@ export function GraphView({ embedded = false }: { embedded?: boolean }) {
             </>
           }
         />
+        <section
+          aria-label="Functions in Graph Explorer"
+          className="border-b border-slate-200 px-4 py-3 dark:border-slate-800"
+        >
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h3 className="text-xs font-semibold text-slate-700 dark:text-slate-200">Functions</h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                {graph.mode === "cartesian"
+                  ? "Edit functions and choose which ones to display together."
+                  : "Edit functions here. Multiple functions can be displayed together in 2D Cartesian mode."}
+              </p>
+            </div>
+            <div className="flex gap-1.5">
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={() => dispatch({ type: "add-function" })}
+              >
+                <Plus size={14} aria-hidden="true" />
+                Add function
+              </Button>
+              <Button
+                size="sm"
+                disabled={!functions.some((fn) => fn.enabled && !fn.visible)}
+                onClick={() =>
+                  functions
+                    .filter((fn) => fn.enabled && !fn.visible)
+                    .forEach((fn) => dispatch({ type: "update-function", id: fn.id, patch: { visible: true } }))
+                }
+              >
+                Show all
+              </Button>
+              <Button
+                size="sm"
+                disabled={!functions.some((fn) => fn.visible)}
+                onClick={() =>
+                  functions
+                    .filter((fn) => fn.visible)
+                    .forEach((fn) => dispatch({ type: "update-function", id: fn.id, patch: { visible: false } }))
+                }
+              >
+                Hide all
+              </Button>
+            </div>
+          </div>
+          {functions.length ? (
+            <div className="space-y-2">
+              {functions.map((fn, index) => (
+                <div
+                  key={fn.id}
+                  className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 dark:border-slate-800 dark:bg-slate-950 sm:flex-nowrap"
+                >
+                  <span
+                    className="h-3 w-3 shrink-0 rounded-full"
+                    style={{ backgroundColor: fn.color }}
+                    aria-hidden="true"
+                  />
+                  <input
+                    aria-label={`Signature of function ${index + 1}`}
+                    value={fn.signature}
+                    onChange={(event) =>
+                      dispatch({
+                        type: "update-function",
+                        id: fn.id,
+                        patch: { signature: event.target.value },
+                      })
+                    }
+                    spellCheck={false}
+                    className="mono min-w-24 flex-1 rounded-md border border-transparent bg-transparent px-2 py-1.5 text-sm font-medium text-slate-800 hover:border-slate-300 focus:border-blue-500 focus:outline-none dark:text-slate-100 dark:hover:border-slate-700"
+                  />
+                  <span className="mono text-sm text-slate-400">=</span>
+                  <input
+                    aria-label={`Expression of function ${index + 1}`}
+                    value={fn.expression}
+                    placeholder="e.g. x^2 - 4"
+                    onChange={(event) =>
+                      dispatch({
+                        type: "update-function",
+                        id: fn.id,
+                        patch: { expression: event.target.value },
+                      })
+                    }
+                    spellCheck={false}
+                    className="mono min-w-36 flex-[2] rounded-md border border-transparent bg-transparent px-2 py-1.5 text-sm text-slate-800 placeholder:text-slate-400 hover:border-slate-300 focus:border-blue-500 focus:outline-none dark:text-slate-100 dark:hover:border-slate-700"
+                  />
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    aria-label={fn.visible ? `Hide ${fn.signature} from graph` : `Show ${fn.signature} on graph`}
+                    title={fn.visible ? "Hide from graph" : "Show on graph"}
+                    aria-pressed={fn.visible}
+                    onClick={() =>
+                      dispatch({ type: "update-function", id: fn.id, patch: { visible: !fn.visible } })
+                    }
+                  >
+                    {fn.visible ? <Eye size={16} aria-hidden="true" /> : <EyeOff size={16} aria-hidden="true" />}
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    aria-label={`Remove ${fn.signature}`}
+                    title="Remove function"
+                    onClick={() => dispatch({ type: "remove-function", id: fn.id })}
+                  >
+                    <Trash2 size={15} aria-hidden="true" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              No functions yet. Use Add function above to create one here.
+            </p>
+          )}
+        </section>
         <div className="relative min-h-[420px] flex-1 p-2">
           <Plot
             data={traces}
@@ -902,31 +1019,6 @@ export function GraphView({ embedded = false }: { embedded?: boolean }) {
                     ✕
                   </Button>
                 </div>
-              ))}
-            </div>
-
-            <div className="flex flex-wrap gap-1.5">
-              {functions.map((fn) => (
-                <button
-                  key={fn.id}
-                  type="button"
-                  onClick={() =>
-                    dispatch({ type: "update-function", id: fn.id, patch: { visible: !fn.visible } })
-                  }
-                  className={cn(
-                    "mono flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] transition-colors",
-                    fn.visible
-                      ? "border-slate-300 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-                      : "border-dashed border-slate-300 text-slate-400 dark:border-slate-700",
-                  )}
-                  aria-pressed={fn.visible}
-                >
-                  <span
-                    className="h-2 w-2 rounded-full"
-                    style={{ backgroundColor: fn.visible ? fn.color : "transparent", border: `1px solid ${fn.color}` }}
-                  />
-                  {fn.signature}
-                </button>
               ))}
             </div>
 
