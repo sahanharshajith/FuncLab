@@ -3,6 +3,7 @@ import type {
   FunctionDef,
   GraphSettings,
   PlotPoint,
+  SavedComparison,
   TableSettings,
   VariableConfig,
   Workspace,
@@ -32,6 +33,8 @@ export type WorkspaceAction =
   | { type: "add-point"; point?: Partial<PlotPoint> }
   | { type: "update-point"; id: string; patch: Partial<PlotPoint> }
   | { type: "remove-point"; id: string }
+  | { type: "save-comparison"; comparison: Omit<SavedComparison, "id" | "createdAt"> }
+  | { type: "remove-comparison"; id: string }
   | { type: "set-data"; data: WorkspaceData };
 
 const SUGGESTED_DEFAULTS: Record<string, Partial<VariableConfig>> = {
@@ -251,6 +254,24 @@ export function workspaceReducer(state: Workspace, action: WorkspaceAction): Wor
       const points = state.data.graph.points.filter((point) => point.id !== action.id);
       return touch(state, { ...state.data, graph: { ...state.data.graph, points } });
     }
+
+    case "save-comparison": {
+      const comparison: SavedComparison = {
+        ...action.comparison,
+        id: nanoid(10),
+        createdAt: new Date().toISOString(),
+      };
+      return touch(state, {
+        ...state.data,
+        savedComparisons: [...state.data.savedComparisons, comparison].slice(-100),
+      });
+    }
+
+    case "remove-comparison":
+      return touch(state, {
+        ...state.data,
+        savedComparisons: state.data.savedComparisons.filter((comparison) => comparison.id !== action.id),
+      });
 
     default:
       return state;

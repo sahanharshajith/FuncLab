@@ -122,6 +122,7 @@ export function emptyWorkspaceData(): WorkspaceData {
   return {
     version: 1,
     functions: [],
+    savedComparisons: [],
     variables: [],
     graph: defaultGraphSettings(),
     table: defaultTableSettings(),
@@ -150,6 +151,7 @@ export function demoWorkspaceData(): WorkspaceData {
   return {
     version: 1,
     functions,
+    savedComparisons: [],
     variables: [
       createVariable("x", { value: 2, min: -10, max: 10, step: 0.1 }),
       createVariable("y", { value: 3, min: -10, max: 10, step: 0.1 }),

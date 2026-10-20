@@ -113,10 +113,32 @@ export interface WorkspaceSettings {
 export interface WorkspaceData {
   version: 1;
   functions: FunctionDef[];
+  savedComparisons: SavedComparison[];
   variables: VariableConfig[];
   graph: GraphSettings;
   table: TableSettings;
   settings: WorkspaceSettings;
+}
+
+/** A saved set of function results for one user-entered variable value. */
+export interface SavedComparison {
+  id: string;
+  createdAt: string;
+  variable: string;
+  inputValue: number;
+  values: Record<string, number>;
+  results: SavedComparisonResult[];
+}
+
+export interface SavedComparisonResult {
+  functionId: string;
+  signature: string;
+  color: string;
+  usedValues: Record<string, number>;
+  value: number | null;
+  display: string;
+  error: string | null;
+  status: EvaluationStatus;
 }
 
 export type WorkspaceStorageKind = "local";

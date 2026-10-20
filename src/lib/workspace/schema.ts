@@ -31,6 +31,26 @@ export const functionSchema = z.object({
   notes: z.string().max(500).optional(),
 });
 
+export const savedComparisonResultSchema = z.object({
+  functionId: z.string().min(1).max(64),
+  signature: z.string().max(120),
+  color: z.string().min(3).max(32),
+  usedValues: z.record(z.string(), finiteNumber),
+  value: finiteNumber.nullable(),
+  display: z.string().max(200),
+  error: z.string().max(500).nullable(),
+  status: z.enum(["ok", "error", "disabled"]),
+});
+
+export const savedComparisonSchema = z.object({
+  id: z.string().min(1).max(64),
+  createdAt: z.string().max(64),
+  variable: z.string().max(64),
+  inputValue: finiteNumber,
+  values: z.record(z.string(), finiteNumber),
+  results: z.array(savedComparisonResultSchema).max(60),
+});
+
 export const pointSchema = z.object({
   id: z.string().min(1).max(64),
   x: finiteNumber,
@@ -91,6 +111,7 @@ export const settingsSchema = z.object({
 export const workspaceDataSchema = z.object({
   version: z.literal(1),
   functions: z.array(functionSchema).max(60),
+  savedComparisons: z.array(savedComparisonSchema).max(100).default([]),
   variables: z.array(variableSchema).max(120),
   graph: graphSchema,
   table: tableSchema,
@@ -118,6 +139,7 @@ export function coerceWorkspaceData(input: unknown): WorkspaceData {
   const raw = (input ?? {}) as Record<string, unknown>;
   const functions = z.array(functionSchema).safeParse(raw.functions);
   const variables = z.array(variableSchema).safeParse(raw.variables);
+  const savedComparisons = z.array(savedComparisonSchema).max(100).safeParse(raw.savedComparisons);
   const graph = graphSchema.safeParse(raw.graph);
   const table = tableSchema.safeParse(raw.table);
   const settings = settingsSchema.safeParse(raw.settings);
@@ -125,6 +147,7 @@ export function coerceWorkspaceData(input: unknown): WorkspaceData {
   return {
     version: 1,
     functions: functions.success ? functions.data : [],
+    savedComparisons: savedComparisons.success ? savedComparisons.data : [],
     variables: variables.success ? variables.data : [],
     graph: graph.success ? graph.data : defaultGraphSettings(),
     table: table.success ? table.data : defaultTableSettings(),
